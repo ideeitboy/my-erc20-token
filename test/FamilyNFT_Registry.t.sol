@@ -4,6 +4,8 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "../src/contracts/FamilyNFT.sol";
 import "../src/contracts/FamilyRegistry.sol";
+import "forge-std/console.sol";
+
 
 contract FamilyNFTRegistryTest is Test 
 {
@@ -12,26 +14,33 @@ contract FamilyNFTRegistryTest is Test
 
     address admin = address(1);
     address daughter = address(2);
+    address son = address(3);
 
     function setUp() public 
     {
-        // Pretend to be the admin deploying the registry
-        vm.prank(admin);
+        vm.startPrank(admin);
+
+        // Deploy registry and NFT
         registry = new FamilyRegistry();
+        nft = new FamilyNFT("FamilyNFT", "FNFT", address(registry));
 
-        // Add daughter to the registry
-        vm.prank(admin);
-        registry.addFamilyMember(daughter, admin, "daughter");
+        // Link DAO or NFT as the authorized caller
+        registry.setDAO(address(nft));
 
-        // Deploy NFT contract using the registry's address
-        vm.prank(admin);
-        nft = new FamilyNFT("Family", "FAM", address(registry));
+        // Register fake family members (so they can mint)
+        registry.setFakeMember(admin, true, "admin", address(0));
+        registry.setFakeMember(daughter, true, "daughter", admin);
+        registry.setFakeMember(son, true, "son", admin);
+
+        vm.stopPrank();
     }
 
     function testRegistryConnection() public view 
     {
         // Ensure NFT contract knows the correct registry address
-        assertEq(nft.registry(), address(registry));
+
+        assertEq(address(nft.registry()), address(registry));
+
     }
 
     function testMintByFamilyMember() public {
@@ -50,7 +59,7 @@ contract FamilyNFTRegistryTest is Test
 
     function testMintByStrangerFails() public 
     {
-        address stranger = address(3);
+        address stranger = address(4);
 
         vm.expectRevert("Not a registered family member");
 
@@ -72,7 +81,7 @@ contract FamilyNFTRegistryTest is Test
     }
 
 
-    function test_RevertWhen_ParentHasNotMinted() public 
+    function testMintFailsIfParentHasNotMinted() public 
     {
         // Daughter tries to mint without parent minting
         vm.expectRevert("Parent has not minted an NFT yet");

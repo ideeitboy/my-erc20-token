@@ -6,17 +6,18 @@ import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "./FamilyRegistry.sol";
 
 
-contract FamilyNFT is ERC721URIStorage, Ownable {
+contract FamilyNFT is ERC721URIStorage, Ownable(msg.sender) {
     uint256 public nextTokenId;
     mapping(address => bool) public hasMinted;
-    address public registry; // Contract address of the FamilyRegistry
+    //address public registry; // Contract address of the FamilyRegistry
+    FamilyRegistry public registry;
 
+    //constructor(string memory name, string memory symbol, address registryAddress) 
     constructor(string memory name, string memory symbol, address registryAddress) 
-    ERC721(name, symbol) 
     
-    Ownable(msg.sender) 
-    {
-        registry = registryAddress;
+    
+    ERC721(name, symbol){
+        registry = FamilyRegistry(registryAddress);
     }
 
 

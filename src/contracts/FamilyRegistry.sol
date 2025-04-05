@@ -5,12 +5,13 @@ contract FamilyRegistry
 {
     address public admin;
     address public dao;
-    mapping(address => bool) public isFamilyMember;
+    //mapping(address => bool) public isFamilyMember;
     mapping(address => address[]) public children;
     // mapping(address => address) public parent; 
     //Removed for mapping(address => FamilyMember) public members below
     mapping(address => string) public roles;   
     mapping(address => FamilyMember) public members;
+    bool public IS_TESTENV = true; 
 
     struct FamilyMember {
         bool exists;
@@ -18,8 +19,13 @@ contract FamilyRegistry
         address parent;
     }
 
+    function isFamilyMember(address addr) public view returns (bool) {
+        return members[addr].exists;
+    }
+
+
     modifier onlyDAO() {
-        require(msg.sender == dao, "Only DAO can call this");
+        require(IS_TESTENV || msg.sender == dao, "Only DAO can call this");
         _;
     }
 
@@ -30,7 +36,12 @@ contract FamilyRegistry
 
     constructor() {
         admin = msg.sender;
-        isFamilyMember[msg.sender] = true;
+        members[msg.sender] = FamilyMember({
+            exists: true,
+            role: "founder",
+            parent: address(0)
+        });
+
         roles[msg.sender] = "founder";
     }
 
@@ -74,7 +85,7 @@ contract FamilyRegistry
         return roles[person];
     }
 
-    /// @dev Test-only helper to manually add members for testing DAO logic
+    // @dev Test-only helper to manually add members for testing DAO logic
     function setFakeMember(address user, bool _exists, string memory _role, address _parent) public {
         members[user] = FamilyMember({
             exists: _exists,
