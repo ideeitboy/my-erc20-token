@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-import "forge-std/Test.sol";
+import "../lib/forge-std/src/Test.sol";
+import "../lib/forge-std/src/console.sol";
 import "../src/contracts/FamilyNFT.sol";
 import "../src/contracts/FamilyRegistry.sol";
 import "../src/contracts/FamilyDAO.sol";
@@ -31,7 +32,7 @@ contract FamilyDAOTest is Test {
         // Deploy registry and DAO
         registry = new FamilyRegistry();
         nft = new FamilyNFT("FamilyNFT", "FNFT", address(registry));
-        dao = new FamilyDAO(address(nft));
+        dao = new FamilyDAO(address(nft), registry);
 
         // Set DAO as the only authorized caller on registry
         registry.setDAO(address(dao));
@@ -119,30 +120,77 @@ contract FamilyDAOTest is Test {
     function testExecuteAddMemberProposal() public {
         address cousin = address(5);
 
-        // Create proposal
-        vm.prank(admin);
-        uint256 proposalId = dao.createProposal("ADD_MEMBER:0x0000000000000000000000000000000000000005:0x0000000000000000000000000000000000000001:cousin");
+        vm.startPrank(admin);
 
-        // Vote FOR the proposal
+        string memory desc = string.concat(
+            "ADD_MEMBER:",
+            vm.toString(cousin),
+            ":",
+            vm.toString(admin),
+            ":cousin"
+        );
+
+        uint proposalId = dao.createProposal(desc);
+
+        vm.stopPrank();
+
         vm.prank(daughter);
         dao.vote(proposalId, true);
 
         vm.prank(son);
         dao.vote(proposalId, true);
 
-        // Fast-forward time past deadline
-        vm.warp(block.timestamp + 3 days + 1);
+        vm.warp(block.timestamp + 3 days);
 
-        // Execute
         vm.prank(admin);
         dao.executeProposal(proposalId);
 
-        // Check: cousin should be registered
-        FamilyRegistry reg = FamilyRegistry(address(registry));
-        (bool exists, string memory role, ) = reg.members(cousin);
-
+        (bool exists,, address parent) = registry.members(cousin);
         assertTrue(exists, "Cousin should be registered");
-        assertEq(role, "cousin");
+        assertEq(parent, admin);
     }
+
+    function testExecuteRemoveMemberProposal() public {
+        address cousin = address(5);
+
+        // Step 1: Add cousin manually (simulate a pre-existing member)
+        vm.prank(admin);
+        registry.setFakeMember(cousin, true, "cousin", admin);
+
+        // debug: check initial state
+        (bool existsBefore,,) = registry.members(cousin);
+        console.log("Before proposal execution: cousin exists =", existsBefore);
+        
+        // Step 2: Create REMOVE_MEMBER proposal
+        string memory desc = string.concat("REMOVE_MEMBER:", vm.toString(cousin));
+        vm.prank(admin);
+        uint id = dao.createProposal(desc);
+
+        // Step 3: Vote FOR with daughter and son
+        vm.prank(daughter);
+        dao.vote(id, true);
+
+        vm.prank(son);
+        dao.vote(id, true);
+
+        // Step 4: Fast forward time to pass the voting deadline
+        vm.warp(block.timestamp + 3 days + 1);
+
+        // Step 5: Execute the proposal
+        vm.prank(admin);
+        dao.executeProposal(id);
+
+        // Check post-state
+        (bool existsAfter,,) = registry.members(cousin);
+        console.log("After proposal execution: cousin exists =", existsAfter);
+
+
+        // Step 6: Verify cousin was removed
+        (bool exists,,) = registry.members(cousin);
+        assertFalse(exists, "Cousin should be removed");
+    }
+
+
+
 
 }

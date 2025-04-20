@@ -1,0 +1,16 @@
+{
+    "name": "Edward Wong",
+    "description": "Third-generation of the Wong family. Born in 1992.",
+    "image": "ipfs://<placeholder-for-image-CID>",
+    "attributes": [
+      {
+        "trait_type": "Generation",
+        "value": 2
+      },
+      {
+        "trait_type": "Role",
+        "value": "Owner of the DAO"
+      }
+    ]
+  }
+  

@@ -73,6 +73,28 @@ contract FamilyRegistry
         });
     }
 
+    function removeFamilyMember(address member) external onlyDAO {
+        require(members[member].exists, "Member not found");
+
+        address parentAddr = members[member].parent;
+
+        // Remove member from their parent's children list
+        address[] storage siblings = children[parentAddr];
+        for (uint i = 0; i < siblings.length; i++) {
+            if (siblings[i] == member) {
+                siblings[i] = siblings[siblings.length - 1];
+                siblings.pop();
+                break;
+            }
+        }
+
+        delete members[member];
+        delete roles[member];
+        delete children[member];
+    }
+
+
+
     function getChildren(address person) external view returns (address[] memory) {
         return children[person];
     }
