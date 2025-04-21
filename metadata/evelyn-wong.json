@@ -1,7 +1,7 @@
 {
     "name": "Evelyn-Wong",
     "description": "Third-generation of the Wong family. Born in 1997.",
-    "image": "ipfs://<placeholder-for-image-CID>",
+    "image": "ipfs://bafybeia3vcmol36mnqhllnikxivmnfsgthfd6ulzy5fzx43syzg3twryt4",
     "attributes": [
       {
         "trait_type": "Generation",

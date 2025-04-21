@@ -43,7 +43,14 @@ contract FamilyDAOTest is Test {
         registry.setFakeMember(son, true, "son", admin);
 
         // Mint an NFT to admin so they can propose/vote
-        nft.mint(admin, "ipfs://admin-nft");
+        nft.mint(admin, "https://pink-labour-ox-753.mypinata.cloud/ipfs/bafkreichiugv37vbqdrbhlizcpldcfiquwkfpjxslbqrv2jzxjyai2dzia?pinataGatewayToken=m-OsOwJyM0daP06Gyqh9UDfa9__UgsIT22Z0br4IZ2h-LrIvY5w5H3FWN8E15G3J");
+        
+        //debug log and asser metadata for admin 
+        string memory uri = nft.tokenURI(0);
+        emit log_string(uri);
+        assertEq(uri, "https://pink-labour-ox-753.mypinata.cloud/ipfs/bafkreichiugv37vbqdrbhlizcpldcfiquwkfpjxslbqrv2jzxjyai2dzia?pinataGatewayToken=m-OsOwJyM0daP06Gyqh9UDfa9__UgsIT22Z0br4IZ2h-LrIvY5w5H3FWN8E15G3J");
+
+        
         nft.mint(daughter, "ipfs://daughter-nft");
         nft.mint(son, "ipfs://son-nft");
 

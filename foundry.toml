@@ -1,8 +1,16 @@
 [profile.default]
-src = "src"
+src = "contracts"
 out = "out"
 libs = ["lib"]
-auto_detect_solc = true
+remappings = [
+  "contracts/=contracts/",
+  "forge-std/=lib/forge-std/src/",
+  "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/"
+]
 
 
-# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+[profile.default.rpc_endpoints]
+sepolia = "https://go.getblock.io/956b49eb14ae42a18fa8801d7f498b9f"
+
+[profile.default.env]
+PRIVATE_KEY = "${PRIVATE_KEY}"

@@ -1,7 +1,7 @@
 {
     "name": "Grandpa Leong",
     "description": "First-generation of the Wong family. Born in 1940.",
-    "image": "ipfs://<placeholder-for-image-CID>",
+    "image": "ipfs://bafkreihx2kpwzeoc3e6t3cbmqwjgzvwvszuivj2h5ulxp3linoekpzkw2m",
     "attributes": [
       {
         "trait_type": "Generation",

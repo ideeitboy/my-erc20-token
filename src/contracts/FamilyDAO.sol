@@ -8,7 +8,6 @@ contract FamilyDAO {
     FamilyNFT public familyNFT;
     FamilyRegistry public registry;
 
-
     uint256 public proposalCount;
 
     struct Proposal {
@@ -67,24 +66,6 @@ contract FamilyDAO {
         emit VoteCast(proposalId, msg.sender, support);
     }
 
-    /*
-    executeProposal function here is replaced with the one below
-
-    function executeProposal(uint256 proposalId) external {
-        Proposal storage p = proposals[proposalId];
-        require(block.timestamp >= p.deadline, "Voting not finished");
-        require(!p.executed, "Already executed");
-
-        p.executed = true;
-
-        bool passed = p.votesFor > p.votesAgainst;
-
-        emit ProposalExecuted(proposalId, passed);
-
-        // In the future, you can act on this (like calling FamilyRegistry.addFamilyMember)
-    }
-    */
-
     function executeProposal(uint256 proposalId) external {
         Proposal storage p = proposals[proposalId];
 
@@ -101,20 +82,18 @@ contract FamilyDAO {
             return;
         }
 
-        // Only handle "ADD_MEMBER" proposals for now
         if (_startsWith(p.description, "ADD_MEMBER:")) {
             (address newMember, address parent, string memory role) = _parseAddMember(p.description);
             registry.addFamilyMember(newMember, parent, role);
-        }
-        
-        else if (_startsWith(p.description, "REMOVE_MEMBER:")) {
+        } else if (_startsWith(p.description, "REMOVE_MEMBER:")) {
             address memberToRemove = _parseRemoveMember(p.description);
             registry.removeFamilyMember(memberToRemove);
         }
-
-
     }
 
+    function getProposalCount() external view returns (uint256) {
+        return proposalCount;
+    }
 
     function _startsWith(string memory str, string memory prefix) internal pure returns (bool) {
         bytes memory strBytes = bytes(str);
@@ -132,7 +111,6 @@ contract FamilyDAO {
 
         return true;
     }
-
 
     function _substring(string memory str, uint startIndex, uint endIndex) internal pure returns (string memory) {
         bytes memory strBytes = bytes(str);
@@ -197,29 +175,26 @@ contract FamilyDAO {
         return address(iaddr);
     }
 
-
-
     function _indexOf(bytes memory str, string memory delim, uint start) internal pure returns (uint) {
         bytes memory delimBytes = bytes(delim);
-        
+
         for (uint i = start; i < str.length - delimBytes.length + 1; i++) {
             bool matchFound = true;
-        
+
             for (uint j = 0; j < delimBytes.length; j++) {
                 if (str[i + j] != delimBytes[j]) {
                     matchFound = false;
                     break;
                 }
             }
-        
+
             if (matchFound) {
                 return i;
             }
         }
-        
+
         revert("Delimiter not found");
     }
-
 
     function _hexStringToUint(bytes memory hexString) internal pure returns (uint result) {
         for (uint i = 0; i < hexString.length; i++) {
@@ -238,7 +213,6 @@ contract FamilyDAO {
     }
 
     function _parseAddMember(string memory desc) internal pure returns (address, address, string memory) {
-        // Expected format: "ADD_MEMBER:0xNewMember:0xParent:role"
         bytes memory strBytes = bytes(desc);
         uint8 partsCount = 0;
         bytes[] memory parts = new bytes[](4);
@@ -246,12 +220,10 @@ contract FamilyDAO {
         uint256 start = 0;
         for (uint256 i = 0; i < strBytes.length; i++) {
             if (strBytes[i] == ":") {
-                // Extract the slice from `start` to `i`
                 parts[partsCount++] = _slice(strBytes, start, i);
                 start = i + 1;
             }
         }
-        // Add the final segment
         parts[partsCount++] = _slice(strBytes, start, strBytes.length);
 
         require(partsCount == 4, "Invalid ADD_MEMBER format");
@@ -274,22 +246,21 @@ contract FamilyDAO {
 
     function _parseAddress(bytes memory input) internal pure returns (address addr) {
         require(input.length == 42, "Invalid address length");
-        
+
         uint160 result = 0;
         for (uint256 i = 2; i < 42; i++) {
             result <<= 4;
             uint8 b = uint8(input[i]);
 
-            if (b >= 48 && b <= 57) result |= uint160(b - 48);        // '0'-'9'
-            else if (b >= 65 && b <= 70) result |= uint160(b - 55);     // 'A'-'F'
-            else if (b >= 97 && b <= 102) result |= uint160(b - 87);    // 'a'-'f'
+            if (b >= 48 && b <= 57) result |= uint160(b - 48);
+            else if (b >= 65 && b <= 70) result |= uint160(b - 55);
+            else if (b >= 97 && b <= 102) result |= uint160(b - 87);
             else revert("Invalid address character");
         }
         return address(result);
     }
 
     function _parseRemoveMember(string memory desc) internal pure returns (address) {
-        // Expected format: "REMOVE_MEMBER:0xAddress"
         bytes memory descBytes = bytes(desc);
 
         uint256 colonIndex = _indexOf(descBytes, ":", 0);
@@ -298,7 +269,4 @@ contract FamilyDAO {
         bytes memory addrBytes = _slice(descBytes, colonIndex + 1, descBytes.length);
         return _parseAddress(addrBytes);
     }
-
-
-
 }

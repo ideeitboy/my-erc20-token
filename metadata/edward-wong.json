@@ -1,7 +1,7 @@
 {
     "name": "Edward Wong",
     "description": "Third-generation of the Wong family. Born in 1992.",
-    "image": "ipfs://<placeholder-for-image-CID>",
+    "image": "ipfs://bafybeig4lnilupp2rpcftpyhxj56tdvfa3t3zrv4k2pkm4uu4c4biqq2iu",
     "attributes": [
       {
         "trait_type": "Generation",
