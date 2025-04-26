@@ -7,10 +7,6 @@ import "../src/contracts/FamilyNFT.sol";
 import "../src/contracts/FamilyRegistry.sol";
 import "../src/contracts/FamilyDAO.sol";
 
-
-// TEST COMMENT
-
-
 contract FamilyDAOTest is Test {
     FamilyRegistry public registry;
     FamilyNFT public nft;
@@ -21,7 +17,6 @@ contract FamilyDAOTest is Test {
     address son = address(3);
     address stranger = address(4);
 
-
     function setUp() public {
         admin = address(1);
         daughter = address(2);
@@ -29,38 +24,27 @@ contract FamilyDAOTest is Test {
 
         vm.startPrank(admin);
 
-        // Deploy registry and DAO
         registry = new FamilyRegistry();
         nft = new FamilyNFT("FamilyNFT", "FNFT", address(registry));
         dao = new FamilyDAO(address(nft), registry);
 
-        // Set DAO as the only authorized caller on registry
         registry.setDAO(address(dao));
 
-        // Admin is a registered family member (fake for now)
         registry.setFakeMember(admin, true, "admin", address(0));
         registry.setFakeMember(daughter, true, "daughter", admin);
         registry.setFakeMember(son, true, "son", admin);
 
-        // Mint an NFT to admin so they can propose/vote
         nft.mint(admin, "https://pink-labour-ox-753.mypinata.cloud/ipfs/bafkreichiugv37vbqdrbhlizcpldcfiquwkfpjxslbqrv2jzxjyai2dzia?pinataGatewayToken=m-OsOwJyM0daP06Gyqh9UDfa9__UgsIT22Z0br4IZ2h-LrIvY5w5H3FWN8E15G3J");
-        
-        //debug log and asser metadata for admin 
+
         string memory uri = nft.tokenURI(0);
         emit log_string(uri);
         assertEq(uri, "https://pink-labour-ox-753.mypinata.cloud/ipfs/bafkreichiugv37vbqdrbhlizcpldcfiquwkfpjxslbqrv2jzxjyai2dzia?pinataGatewayToken=m-OsOwJyM0daP06Gyqh9UDfa9__UgsIT22Z0br4IZ2h-LrIvY5w5H3FWN8E15G3J");
 
-        
         nft.mint(daughter, "ipfs://daughter-nft");
         nft.mint(son, "ipfs://son-nft");
 
-
-        // Use DAO to add daughter & son via proposal execution
-        // We'll simulate proposals directly in tests instead of doing it here
-
         vm.stopPrank();
     }
-
 
     function testCreateProposal() public {
         vm.prank(daughter);
@@ -75,22 +59,20 @@ contract FamilyDAOTest is Test {
         vm.prank(son);
         dao.vote(proposalId, true);
 
-        // Should revert if voting again
-        vm.expectRevert("Already voted");
+        vm.expectRevert(FamilyDAO.AlreadyVoted.selector);
         vm.prank(son);
         dao.vote(proposalId, true);
     }
 
     function testOnlyNFTCanVoteOrPropose() public {
-        // Should fail for stranger
-        vm.expectRevert("Not an NFT holder");
+        vm.expectRevert(FamilyDAO.NotNFTHolder.selector);
         vm.prank(stranger);
         dao.createProposal("Stranger shouldn't be here");
 
         vm.prank(daughter);
         uint256 id = dao.createProposal("Add new aunt");
 
-        vm.expectRevert("Not an NFT holder");
+        vm.expectRevert(FamilyDAO.NotNFTHolder.selector);
         vm.prank(stranger);
         dao.vote(id, true);
     }
@@ -105,7 +87,6 @@ contract FamilyDAOTest is Test {
         vm.prank(son);
         dao.vote(proposalId, false);
 
-        // Fast-forward 3 days
         vm.warp(block.timestamp + 3 days + 1);
 
         vm.prank(admin);
@@ -119,7 +100,7 @@ contract FamilyDAOTest is Test {
         vm.prank(daughter);
         dao.vote(proposalId, true);
 
-        vm.expectRevert("Voting not finished");
+        vm.expectRevert(FamilyDAO.VotingNotFinished.selector);
         vm.prank(admin);
         dao.executeProposal(proposalId);
     }
@@ -134,7 +115,8 @@ contract FamilyDAOTest is Test {
             vm.toString(cousin),
             ":",
             vm.toString(admin),
-            ":cousin"
+            ":cousin:",
+            "ipfs://dummy-uri"
         );
 
         uint proposalId = dao.createProposal(desc);
@@ -160,44 +142,31 @@ contract FamilyDAOTest is Test {
     function testExecuteRemoveMemberProposal() public {
         address cousin = address(5);
 
-        // Step 1: Add cousin manually (simulate a pre-existing member)
         vm.prank(admin);
         registry.setFakeMember(cousin, true, "cousin", admin);
 
-        // debug: check initial state
         (bool existsBefore,,) = registry.members(cousin);
         console.log("Before proposal execution: cousin exists =", existsBefore);
-        
-        // Step 2: Create REMOVE_MEMBER proposal
+
         string memory desc = string.concat("REMOVE_MEMBER:", vm.toString(cousin));
         vm.prank(admin);
         uint id = dao.createProposal(desc);
 
-        // Step 3: Vote FOR with daughter and son
         vm.prank(daughter);
         dao.vote(id, true);
 
         vm.prank(son);
         dao.vote(id, true);
 
-        // Step 4: Fast forward time to pass the voting deadline
         vm.warp(block.timestamp + 3 days + 1);
 
-        // Step 5: Execute the proposal
         vm.prank(admin);
         dao.executeProposal(id);
 
-        // Check post-state
         (bool existsAfter,,) = registry.members(cousin);
         console.log("After proposal execution: cousin exists =", existsAfter);
 
-
-        // Step 6: Verify cousin was removed
         (bool exists,,) = registry.members(cousin);
         assertFalse(exists, "Cousin should be removed");
     }
-
-
-
-
 }

@@ -3,6 +3,8 @@ pragma solidity ^0.8.19;
 
 import "./FamilyNFT.sol";
 import "./FamilyRegistry.sol";
+import "forge-std/console.sol";
+
 
 contract FamilyDAO {
     FamilyNFT public familyNFT;
@@ -23,6 +25,10 @@ contract FamilyDAO {
 
     mapping(uint256 => Proposal) public proposals;
 
+    error NotNFTHolder();
+    error AlreadyVoted();
+    error VotingNotFinished();
+
     event ProposalCreated(uint256 id, address proposer, string description);
     event VoteCast(uint256 proposalId, address voter, bool support);
     event ProposalExecuted(uint256 id, bool passed);
@@ -32,241 +38,172 @@ contract FamilyDAO {
         registry = _registry;
     }
 
-    modifier onlyVoter() {
-        require(familyNFT.balanceOf(msg.sender) > 0, "Not an NFT holder");
-        _;
+    function createProposal(string memory description) external returns (uint256) {
+        if (familyNFT.balanceOf(msg.sender) == 0) revert NotNFTHolder();
+
+        uint256 proposalId = proposalCount++;
+        Proposal storage proposal = proposals[proposalId];
+        proposal.id = proposalId;
+        proposal.proposer = msg.sender;
+        proposal.description = description;
+        proposal.deadline = block.timestamp + 60;
+
+        emit ProposalCreated(proposalId, msg.sender, description);
+        return proposalId;
     }
 
-    function createProposal(string calldata description) external onlyVoter returns (uint256) {
-        uint256 id = proposalCount++;
+    function vote(uint256 proposalId, bool support) external {
+        if (familyNFT.balanceOf(msg.sender) == 0) revert NotNFTHolder();
 
-        Proposal storage p = proposals[id];
-        p.id = id;
-        p.proposer = msg.sender;
-        p.description = description;
-        p.deadline = block.timestamp + 3 days;
+        Proposal storage proposal = proposals[proposalId];
+        if (proposal.hasVoted[msg.sender]) revert AlreadyVoted();
 
-        emit ProposalCreated(id, msg.sender, description);
-        return id;
-    }
-
-    function vote(uint256 proposalId, bool support) external onlyVoter {
-        Proposal storage p = proposals[proposalId];
-        require(block.timestamp < p.deadline, "Voting closed");
-        require(!p.hasVoted[msg.sender], "Already voted");
-
-        p.hasVoted[msg.sender] = true;
+        proposal.hasVoted[msg.sender] = true;
 
         if (support) {
-            p.votesFor += 1;
+            proposal.votesFor++;
         } else {
-            p.votesAgainst += 1;
+            proposal.votesAgainst++;
         }
 
         emit VoteCast(proposalId, msg.sender, support);
     }
 
     function executeProposal(uint256 proposalId) external {
-        Proposal storage p = proposals[proposalId];
+        Proposal storage proposal = proposals[proposalId];
 
-        require(block.timestamp >= p.deadline, "Voting not finished");
-        require(!p.executed, "Proposal already executed");
+        if (block.timestamp < proposal.deadline) revert VotingNotFinished();
+        require(!proposal.executed, "Proposal already executed");
 
-        p.executed = true;
+        proposal.executed = true;
 
-        bool passed = p.votesFor > p.votesAgainst;
-
+        bool passed = proposal.votesFor > proposal.votesAgainst;
         emit ProposalExecuted(proposalId, passed);
 
-        if (!passed) {
-            return;
-        }
+        if (passed) {
+            bytes memory descriptionBytes = bytes(proposal.description);
 
-        if (_startsWith(p.description, "ADD_MEMBER:")) {
-            (address newMember, address parent, string memory role) = _parseAddMember(p.description);
-            registry.addFamilyMember(newMember, parent, role);
-        } else if (_startsWith(p.description, "REMOVE_MEMBER:")) {
-            address memberToRemove = _parseRemoveMember(p.description);
-            registry.removeFamilyMember(memberToRemove);
-        }
-    }
+            if (_startsWith(descriptionBytes, "ADD_MEMBER:")) {
+                (address newMember, address parent, string memory role, string memory metadataURI) = _parseAddMember(descriptionBytes);
 
-    function getProposalCount() external view returns (uint256) {
-        return proposalCount;
-    }
+                // 🛠 Fix: Add ipfs:// prefix if missing
+                bytes memory metadataBytes = bytes(metadataURI);
+                if (metadataBytes.length >= 4) {
+                    // Check if it already starts with ipfs://
+                    bytes memory prefix = bytes("ipfs://");
+                    bool hasPrefix = true;
+                    for (uint i = 0; i < prefix.length; i++) {
+                        if (i >= metadataBytes.length || metadataBytes[i] != prefix[i]) {
+                            hasPrefix = false;
+                            break;
+                        }
+                    }
+                    if (!hasPrefix) {
+                        metadataURI = string(abi.encodePacked("ipfs://", metadataURI));
+                    }
+                }
 
-    function _startsWith(string memory str, string memory prefix) internal pure returns (bool) {
-        bytes memory strBytes = bytes(str);
-        bytes memory prefixBytes = bytes(prefix);
-
-        if (prefixBytes.length > strBytes.length) {
-            return false;
-        }
-
-        for (uint256 i = 0; i < prefixBytes.length; i++) {
-            if (strBytes[i] != prefixBytes[i]) {
-                return false;
+                registry.addFamilyMember(newMember, parent, role, metadataURI);
+                familyNFT.mint(newMember, metadataURI);
+            } 
+            
+            else if (_startsWith(descriptionBytes, "REMOVE_MEMBER:")) {
+                address memberToRemove = _parseAddress(_slice(descriptionBytes, 14, descriptionBytes.length - 14));
+                registry.removeFamilyMember(memberToRemove);
+                // 🚫 No NFT burning anymore.
             }
         }
 
+        delete proposals[proposalId];
+    }
+
+    function _startsWith(bytes memory description, string memory prefix) internal pure returns (bool) {
+        bytes memory prefixBytes = bytes(prefix);
+        if (description.length < prefixBytes.length) return false;
+        for (uint256 i = 0; i < prefixBytes.length; i++) {
+            if (description[i] != prefixBytes[i]) return false;
+        }
         return true;
     }
 
-    function _substring(string memory str, uint startIndex, uint endIndex) internal pure returns (string memory) {
-        bytes memory strBytes = bytes(str);
-        bytes memory result = new bytes(endIndex - startIndex);
-        for(uint i = startIndex; i < endIndex; i++) {
-            result[i - startIndex] = strBytes[i];
+    function _parseAddMember(bytes memory description) internal pure returns (address newMember, address parent, string memory role, string memory metadataURI) {
+        bytes memory delimiter = bytes(":");
+        uint[4] memory positions;
+        uint colonCount = 0;
+
+        // Find the first 4 colons
+        for (uint i = 0; i < description.length; i++) {
+            if (description[i] == delimiter[0]) {
+                if (colonCount < 4) {
+                    positions[colonCount] = i;
+                }
+                colonCount++;
+            }
         }
-        return string(result);
+
+        require(colonCount >= 4, "Invalid add member format");
+
+        newMember = _parseAddress(_slice(description, positions[0] + 1, positions[1] - positions[0] - 1));
+        parent = _parseAddress(_slice(description, positions[1] + 1, positions[2] - positions[1] - 1));
+        role = string(_slice(description, positions[2] + 1, positions[3] - positions[2] - 1));
+        metadataURI = string(_slice(description, positions[3] + 1, description.length - positions[3] - 1));
     }
 
-    function _split(string memory str, string memory delim) internal pure returns (string[] memory) {
-        bytes memory strBytes = bytes(str);
-        bytes memory delimBytes = bytes(delim);
 
-        uint partsCount = 1;
-        for (uint i = 0; i < strBytes.length - delimBytes.length + 1; i++) {
-            bool matchDelim = true;
-            for (uint j = 0; j < delimBytes.length; j++) {
-                if (strBytes[i + j] != delimBytes[j]) {
-                    matchDelim = false;
-                    break;
-                }
+    function _split(bytes memory input, string memory delimiter) internal pure returns (string[] memory) {
+        uint256 partsCount = 1;
+        for (uint256 i = 0; i < input.length; i++) {
+            if (input[i] == bytes(delimiter)[0]) {
+                partsCount++;
             }
-            if (matchDelim) partsCount++;
         }
 
         string[] memory parts = new string[](partsCount);
-        uint partIndex = 0;
-        uint lastStart = 0;
-
-        for (uint i = 0; i < strBytes.length - delimBytes.length + 1; i++) {
-            bool matchDelim = true;
-            for (uint j = 0; j < delimBytes.length; j++) {
-                if (strBytes[i + j] != delimBytes[j]) {
-                    matchDelim = false;
-                    break;
-                }
-            }
-            if (matchDelim) {
-                parts[partIndex++] = _substring(str, lastStart, i);
-                lastStart = i + delimBytes.length;
-                i += delimBytes.length - 1;
-            }
-        }
-        parts[partIndex] = _substring(str, lastStart, strBytes.length);
-        return parts;
-    }
-
-    function parseAddr(string memory str) internal pure returns (address parsedAddress) {
-        bytes memory tmp = bytes(str);
-        uint160 iaddr = 0;
-        uint160 b1;
-        uint160 b2;
-        for (uint i = 2; i < 2 + 2 * 20; i += 2) {
-            iaddr *= 256;
-            b1 = uint160(uint8(tmp[i]));
-            b2 = uint160(uint8(tmp[i + 1]));
-            b1 = b1 >= 97 ? b1 - 87 : (b1 >= 65 ? b1 - 55 : b1 - 48);
-            b2 = b2 >= 97 ? b2 - 87 : (b2 >= 65 ? b2 - 55 : b2 - 48);
-            iaddr += (b1 * 16 + b2);
-        }
-        return address(iaddr);
-    }
-
-    function _indexOf(bytes memory str, string memory delim, uint start) internal pure returns (uint) {
-        bytes memory delimBytes = bytes(delim);
-
-        for (uint i = start; i < str.length - delimBytes.length + 1; i++) {
-            bool matchFound = true;
-
-            for (uint j = 0; j < delimBytes.length; j++) {
-                if (str[i + j] != delimBytes[j]) {
-                    matchFound = false;
-                    break;
-                }
-            }
-
-            if (matchFound) {
-                return i;
-            }
-        }
-
-        revert("Delimiter not found");
-    }
-
-    function _hexStringToUint(bytes memory hexString) internal pure returns (uint result) {
-        for (uint i = 0; i < hexString.length; i++) {
-            uint digit = uint(uint8(hexString[i]));
-
-            if (digit >= 48 && digit <= 57) {
-                result = result * 16 + (digit - 48);
-            } else if (digit >= 97 && digit <= 102) {
-                result = result * 16 + (digit - 87);
-            } else if (digit >= 65 && digit <= 70) {
-                result = result * 16 + (digit - 55);
-            } else {
-                revert("Invalid hex character");
-            }
-        }
-    }
-
-    function _parseAddMember(string memory desc) internal pure returns (address, address, string memory) {
-        bytes memory strBytes = bytes(desc);
-        uint8 partsCount = 0;
-        bytes[] memory parts = new bytes[](4);
-
+        uint256 partIndex = 0;
         uint256 start = 0;
-        for (uint256 i = 0; i < strBytes.length; i++) {
-            if (strBytes[i] == ":") {
-                parts[partsCount++] = _slice(strBytes, start, i);
+        for (uint256 i = 0; i <= input.length; i++) {
+            if (i == input.length || input[i] == bytes(delimiter)[0]) {
+                bytes memory part = new bytes(i - start);
+                for (uint256 j = 0; j < i - start; j++) {
+                    part[j] = input[start + j];
+                }
+                parts[partIndex++] = string(part);
                 start = i + 1;
             }
         }
-        parts[partsCount++] = _slice(strBytes, start, strBytes.length);
-
-        require(partsCount == 4, "Invalid ADD_MEMBER format");
-
-        address newMember = _parseAddress(parts[1]);
-        address parent = _parseAddress(parts[2]);
-        string memory role = string(parts[3]);
-
-        return (newMember, parent, role);
+        return parts;
     }
 
-    function _slice(bytes memory data, uint256 start, uint256 end) internal pure returns (bytes memory) {
-        require(end > start, "Invalid slice bounds");
-        bytes memory result = new bytes(end - start);
-        for (uint256 i = start; i < end; i++) {
-            result[i - start] = data[i];
+    function _slice(bytes memory input, uint256 start, uint256 length) internal pure returns (bytes memory) {
+        bytes memory temp = new bytes(length);
+        for (uint256 i = 0; i < length; i++) {
+            temp[i] = input[start + i];
         }
-        return result;
+        return temp;
     }
 
     function _parseAddress(bytes memory input) internal pure returns (address addr) {
         require(input.length == 42, "Invalid address length");
-
-        uint160 result = 0;
-        for (uint256 i = 2; i < 42; i++) {
-            result <<= 4;
-            uint8 b = uint8(input[i]);
-
-            if (b >= 48 && b <= 57) result |= uint160(b - 48);
-            else if (b >= 65 && b <= 70) result |= uint160(b - 55);
-            else if (b >= 97 && b <= 102) result |= uint160(b - 87);
-            else revert("Invalid address character");
+        bytes memory addrBytes = new bytes(20);
+        for (uint256 i = 0; i < 20; i++) {
+            addrBytes[i] = bytes1(_fromHexChar(uint8(input[2 + i * 2])) * 16 + _fromHexChar(uint8(input[3 + i * 2])));
         }
-        return address(result);
+        assembly {
+            addr := mload(add(addrBytes, 20))
+        }
     }
 
-    function _parseRemoveMember(string memory desc) internal pure returns (address) {
-        bytes memory descBytes = bytes(desc);
-
-        uint256 colonIndex = _indexOf(descBytes, ":", 0);
-        require(colonIndex != type(uint256).max, "Invalid format");
-
-        bytes memory addrBytes = _slice(descBytes, colonIndex + 1, descBytes.length);
-        return _parseAddress(addrBytes);
+    function _fromHexChar(uint8 c) internal pure returns (uint8) {
+        if (bytes1(c) >= "0" && bytes1(c) <= "9") {
+            return c - uint8(bytes1("0"));
+        }
+        if (bytes1(c) >= "a" && bytes1(c) <= "f") {
+            return 10 + c - uint8(bytes1("a"));
+        }
+        if (bytes1(c) >= "A" && bytes1(c) <= "F") {
+            return 10 + c - uint8(bytes1("A"));
+        }
+        revert("Invalid hex character");
     }
 }
+

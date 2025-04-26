@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-contract FamilyRegistry 
-{
+contract FamilyRegistry {
     address public admin;
     address public dao;
-    //mapping(address => bool) public isFamilyMember;
     mapping(address => address[]) public children;
-    // mapping(address => address) public parent; 
-    //Removed for mapping(address => FamilyMember) public members below
-    mapping(address => string) public roles;   
+    mapping(address => string) public roles;
     mapping(address => FamilyMember) public members;
+    mapping(address => string) public metadataURIs; // 🆕 New mapping for metadata
     bool public IS_TESTENV = true; 
 
     struct FamilyMember {
@@ -19,19 +16,14 @@ contract FamilyRegistry
         address parent;
     }
 
-    function isFamilyMember(address addr) public view returns (bool) {
-        return members[addr].exists;
-    }
-
-
     modifier onlyDAO() {
         require(IS_TESTENV || msg.sender == dao, "Only DAO can call this");
         _;
     }
 
-    function setDAO(address _dao) external {
-        require(dao == address(0), "DAO already set");
-        dao = _dao;
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Only admin can do this");
+        _;
     }
 
     constructor() {
@@ -45,24 +37,16 @@ contract FamilyRegistry
         roles[msg.sender] = "founder";
     }
 
-    modifier onlyAdmin() {
-        require(msg.sender == admin, "Only admin can do this");
-        _;
+    function isFamilyMember(address addr) public view returns (bool) {
+        return members[addr].exists;
     }
 
-/*   
-    This addFamily function was replaced by the one below after adding the DAO logic 
-
-    function addFamilyMember(address newMember, address parentAddr, string calldata role) external onlyAdmin {
-        require(!isFamilyMember[newMember], "Already added");
-        isFamilyMember[newMember] = true;
-        parent[newMember] = parentAddr;
-        children[parentAddr].push(newMember);
-        roles[newMember] = role;
+    function setDAO(address _dao) external {
+        require(dao == address(0), "DAO already set");
+        dao = _dao;
     }
-*/
 
-    function addFamilyMember(address newMember, address parent, string memory role) external onlyDAO {
+    function addFamilyMember(address newMember, address parent, string memory role, string memory metadataURI) external onlyDAO {
         require(!members[newMember].exists, "Already added");
         require(members[parent].exists || parent == address(0), "Parent not found");
 
@@ -71,7 +55,16 @@ contract FamilyRegistry
             parent: parent,
             role: role
         });
+
+        roles[newMember] = role;
+        metadataURIs[newMember] = metadataURI;
+
+        // 🆕 FIX: add the new member to their parent's children array
+        if (parent != address(0)) {
+            children[parent].push(newMember);
+        }
     }
+
 
     function removeFamilyMember(address member) external onlyDAO {
         require(members[member].exists, "Member not found");
@@ -91,9 +84,8 @@ contract FamilyRegistry
         delete members[member];
         delete roles[member];
         delete children[member];
+        delete metadataURIs[member]; // 🆕 Also delete stored metadata
     }
-
-
 
     function getChildren(address person) external view returns (address[] memory) {
         return children[person];
@@ -107,13 +99,18 @@ contract FamilyRegistry
         return roles[person];
     }
 
+    function getMetadataURI(address person) external view returns (string memory) {
+        return metadataURIs[person];
+    }
+
     // @dev Test-only helper to manually add members for testing DAO logic
     function setFakeMember(address user, bool _exists, string memory _role, address _parent) public {
         members[user] = FamilyMember({
             exists: _exists,
             role: _role,
             parent: _parent
-            });
+        });
+
+        roles[user] = _role;
     }
-  
 }

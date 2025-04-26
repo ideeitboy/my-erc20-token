@@ -13,30 +13,32 @@ contract FamilyNFT is ERC721URIStorage, Ownable(msg.sender) {
     FamilyRegistry public registry;
     address public familyDAO;
 
-    constructor(string memory name, string memory symbol, address registryAddress) ERC721(name, symbol) {
+    constructor(string memory name, string memory symbol, address registryAddress)
+        ERC721(name, symbol)
+    {
         registry = FamilyRegistry(registryAddress);
-    }
-
-    modifier onlyFamilyMember() {
-        require(FamilyRegistry(registry).isFamilyMember(msg.sender), "Not a registered family member");
-        _;
     }
 
     function getMetadataURI(uint256 tokenId) external view returns (string memory) {
         return tokenMetadataURI[tokenId];
     }
 
-    function mint(address to, string memory tokenURI) external onlyFamilyMember {
+    function mint(address to, string memory _tokenURI) external {
+        require(
+            registry.isFamilyMember(to) || msg.sender == familyDAO,
+            "Not a registered family member"
+        );
+
         require(!hasMinted[to], "This address has already minted");
 
-        address parent = FamilyRegistry(registry).getParent(to);
+        address parent = registry.getParent(to);
         if (parent != address(0)) {
             require(balanceOf(parent) > 0, "Parent has not minted an NFT yet");
         }
 
         _safeMint(to, nextTokenId);
-        _setTokenURI(nextTokenId, tokenURI);
-        tokenMetadataURI[nextTokenId] = tokenURI;
+        _setTokenURI(nextTokenId, _tokenURI);
+        tokenMetadataURI[nextTokenId] = _tokenURI;
         hasMinted[to] = true;
         nextTokenId++;
     }
@@ -50,9 +52,15 @@ contract FamilyNFT is ERC721URIStorage, Ownable(msg.sender) {
         require(!hasMinted[msg.sender], "Already minted");
 
         _safeMint(msg.sender, nextTokenId);
-        tokenMetadataURI[nextTokenId] = ""; // optional URI
+
+        string memory cid = "bafkreichiugv37vbqdrbhlizcpldcfiquwkfpjxslbqrv2jzxjyai2dzia";
+        string memory ipfsURI = string.concat("ipfs://", cid);
+
+        _setTokenURI(nextTokenId, ipfsURI);
+        tokenMetadataURI[nextTokenId] = ipfsURI;
         hasMinted[msg.sender] = true;
         nextTokenId++;
     }
+
 
 }
