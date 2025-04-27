@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "openzeppelin-contracts/contracts/access/Ownable.sol";
+import "../../lib/openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "../../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import "./FamilyRegistry.sol";
 
 contract FamilyNFT is ERC721URIStorage, Ownable(msg.sender) {
@@ -48,12 +48,13 @@ contract FamilyNFT is ERC721URIStorage, Ownable(msg.sender) {
         familyDAO = dao;
     }
 
-    function adminMint() external onlyOwner {
+    
+
+    function adminMint(string memory cid) external {
         require(!hasMinted[msg.sender], "Already minted");
-
         _safeMint(msg.sender, nextTokenId);
-
-        string memory cid = "bafkreichiugv37vbqdrbhlizcpldcfiquwkfpjxslbqrv2jzxjyai2dzia";
+        cid = "bafkreif4oe2fjraicflpxkjgi3j32gvxvzcq4qogxw6kuxrero3egrgmfi";
+    
         string memory ipfsURI = string.concat("ipfs://", cid);
 
         _setTokenURI(nextTokenId, ipfsURI);

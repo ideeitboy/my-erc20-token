@@ -5,6 +5,7 @@ import './App.css'
 import FamilyDAO from './contracts/FamilyDAO.json'
 import FamilyNFT from './contracts/FamilyNFT.json'
 import FamilyRegistry from './contracts/FamilyRegistry.json'
+// import adminMint from "../../src/contracts/FamilyNFT.sol"
 
 import {
   FAMILY_NFT_ADDRESS,
@@ -24,6 +25,7 @@ function App() {
   const [registryContract, setRegistryContract] = useState(null)
   const [proposalCount, setProposalCount] = useState(0)
   const [proposalType, setProposalType] = useState('')
+  const [adminAddress, setAdminAddress] = useState('')
   const [newMember, setNewMember] = useState('')
   const [parentAddress, setParentAddress] = useState('')
   const [role, setRole] = useState('')
@@ -106,7 +108,7 @@ function App() {
       const signerProvider = new ethers.BrowserProvider(window.ethereum)
       const signer = await signerProvider.getSigner()
       const nftWithSigner = nftContract.connect(signer)
-      const tx = await nftWithSigner.adminMint()
+      const tx = await nftWithSigner.adminMint(adminAddress)
       await tx.wait()
       alert("✅ NFT successfully minted!")
       await loadMintedNFTs()
@@ -270,9 +272,17 @@ function App() {
       <p>🗳️ Total Proposals: {proposalCount}</p>
 
       {account && (
+        <div style={{ marginTop: "20px", display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <h2>👤 Admin Address</h2>
+          <input type="text" placeholder="Admin IPFS" value={adminAddress} onChange={(e) => setAdminAddress(e.target.value)} style={{ width: '500px' }} />
+          </div>
+      )}
+
+      {account && (
         <button onClick={adminMintNFT} style={{ marginTop: '20px' }}>🪙 Admin Mint NFT to Self</button>
       )}
 
+  
       {account && (
         <div style={{ marginTop: "20px", display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <h2>📜 Create a New Proposal</h2>

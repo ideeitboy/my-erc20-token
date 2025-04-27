@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import "./FamilyNFT.sol";
 import "./FamilyRegistry.sol";
-import "forge-std/console.sol";
+// import "../../lib/forge-std/console.sol";
 
 
 contract FamilyDAO {
