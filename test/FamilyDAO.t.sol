@@ -118,8 +118,9 @@ contract FamilyDAOTest is Test {
             ":cousin:",
             "ipfs://dummy-uri"
         );
+        string memory desc = string.concat("ADD_MEMBER:", vm.toString(cousin), ":", vm.toString(admin), ":cousin:", "ipfs://dummy-uri");
 
-        uint proposalId = dao.createProposal(desc);
+        uint256 proposalId = dao.createProposal(desc);
 
         vm.stopPrank();
 
@@ -150,7 +151,7 @@ contract FamilyDAOTest is Test {
 
         string memory desc = string.concat("REMOVE_MEMBER:", vm.toString(cousin));
         vm.prank(admin);
-        uint id = dao.createProposal(desc);
+        uint256 id = dao.createProposal(desc);
 
         vm.prank(daughter);
         dao.vote(id, true);
