@@ -118,7 +118,6 @@ contract FamilyDAOTest is Test {
             ":cousin:",
             "ipfs://dummy-uri"
         );
-        string memory desc = string.concat("ADD_MEMBER:", vm.toString(cousin), ":", vm.toString(admin), ":cousin:", "ipfs://dummy-uri");
 
         uint256 proposalId = dao.createProposal(desc);
 
