@@ -6,9 +6,7 @@ import "../src/contracts/FamilyNFT.sol";
 import "../src/contracts/FamilyRegistry.sol";
 import "forge-std/console.sol";
 
-
-contract FamilyNFTRegistryTest is Test 
-{
+contract FamilyNFTRegistryTest is Test {
     FamilyNFT public nft;
     FamilyRegistry public registry;
 
@@ -16,8 +14,7 @@ contract FamilyNFTRegistryTest is Test
     address daughter = address(2);
     address son = address(3);
 
-    function setUp() public 
-    {
+    function setUp() public {
         vm.startPrank(admin);
 
         // Deploy registry and NFT
@@ -35,12 +32,10 @@ contract FamilyNFTRegistryTest is Test
         vm.stopPrank();
     }
 
-    function testRegistryConnection() public view 
-    {
+    function testRegistryConnection() public view {
         // Ensure NFT contract knows the correct registry address
 
         assertEq(address(nft.registry()), address(registry));
-
     }
 
     function testMintByFamilyMember() public {
@@ -56,9 +51,7 @@ contract FamilyNFTRegistryTest is Test
         assertEq(nft.tokenURI(1), "ipfs://my-daughter-nft");
     }
 
-
-    function testMintByStrangerFails() public 
-    {
+    function testMintByStrangerFails() public {
         address stranger = address(4);
 
         vm.expectRevert("Not a registered family member");
@@ -67,27 +60,22 @@ contract FamilyNFTRegistryTest is Test
         nft.mint(stranger, "ipfs://should-fail");
     }
 
-    function testChildCanOnlyMintIfParentHasNFT() public 
-    {
-    // Parent mints first
-    vm.prank(admin);
-    nft.mint(admin, "ipfs://admin-nft");
+    function testChildCanOnlyMintIfParentHasNFT() public {
+        // Parent mints first
+        vm.prank(admin);
+        nft.mint(admin, "ipfs://admin-nft");
 
-    // Now daughter can mint
-    vm.prank(daughter);
-    nft.mint(daughter, "ipfs://daughter-nft");
+        // Now daughter can mint
+        vm.prank(daughter);
+        nft.mint(daughter, "ipfs://daughter-nft");
 
-    assertEq(nft.ownerOf(1), daughter);
+        assertEq(nft.ownerOf(1), daughter);
     }
 
-
-    function testMintFailsIfParentHasNotMinted() public 
-    {
+    function testMintFailsIfParentHasNotMinted() public {
         // Daughter tries to mint without parent minting
         vm.expectRevert("Parent has not minted an NFT yet");
         vm.prank(daughter);
         nft.mint(daughter, "ipfs://fail");
-    }   
-
-
+    }
 }

@@ -34,11 +34,17 @@ contract FamilyDAOTest is Test {
         registry.setFakeMember(daughter, true, "daughter", admin);
         registry.setFakeMember(son, true, "son", admin);
 
-        nft.mint(admin, "https://pink-labour-ox-753.mypinata.cloud/ipfs/bafkreichiugv37vbqdrbhlizcpldcfiquwkfpjxslbqrv2jzxjyai2dzia?pinataGatewayToken=m-OsOwJyM0daP06Gyqh9UDfa9__UgsIT22Z0br4IZ2h-LrIvY5w5H3FWN8E15G3J");
+        nft.mint(
+            admin,
+            "https://pink-labour-ox-753.mypinata.cloud/ipfs/bafkreichiugv37vbqdrbhlizcpldcfiquwkfpjxslbqrv2jzxjyai2dzia?pinataGatewayToken=m-OsOwJyM0daP06Gyqh9UDfa9__UgsIT22Z0br4IZ2h-LrIvY5w5H3FWN8E15G3J"
+        );
 
         string memory uri = nft.tokenURI(0);
         emit log_string(uri);
-        assertEq(uri, "https://pink-labour-ox-753.mypinata.cloud/ipfs/bafkreichiugv37vbqdrbhlizcpldcfiquwkfpjxslbqrv2jzxjyai2dzia?pinataGatewayToken=m-OsOwJyM0daP06Gyqh9UDfa9__UgsIT22Z0br4IZ2h-LrIvY5w5H3FWN8E15G3J");
+        assertEq(
+            uri,
+            "https://pink-labour-ox-753.mypinata.cloud/ipfs/bafkreichiugv37vbqdrbhlizcpldcfiquwkfpjxslbqrv2jzxjyai2dzia?pinataGatewayToken=m-OsOwJyM0daP06Gyqh9UDfa9__UgsIT22Z0br4IZ2h-LrIvY5w5H3FWN8E15G3J"
+        );
 
         nft.mint(daughter, "ipfs://daughter-nft");
         nft.mint(son, "ipfs://son-nft");
@@ -110,14 +116,8 @@ contract FamilyDAOTest is Test {
 
         vm.startPrank(admin);
 
-        string memory desc = string.concat(
-            "ADD_MEMBER:",
-            vm.toString(cousin),
-            ":",
-            vm.toString(admin),
-            ":cousin:",
-            "ipfs://dummy-uri"
-        );
+        string memory desc =
+            string.concat("ADD_MEMBER:", vm.toString(cousin), ":", vm.toString(admin), ":cousin:", "ipfs://dummy-uri");
 
         uint256 proposalId = dao.createProposal(desc);
 
