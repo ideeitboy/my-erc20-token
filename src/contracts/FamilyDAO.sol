@@ -46,7 +46,7 @@ contract FamilyDAO {
         proposal.id = proposalId;
         proposal.proposer = msg.sender;
         proposal.description = description;
-        proposal.deadline = block.timestamp + 60;
+        proposal.deadline = block.timestamp + 20;
 
         emit ProposalCreated(proposalId, msg.sender, description);
         return proposalId;
@@ -109,8 +109,14 @@ contract FamilyDAO {
             
             else if (_startsWith(descriptionBytes, "REMOVE_MEMBER:")) {
                 address memberToRemove = _parseAddress(_slice(descriptionBytes, 14, descriptionBytes.length - 14));
-                registry.removeFamilyMember(memberToRemove);
-                // 🚫 No NFT burning anymore.
+
+                    uint256 balance = familyNFT.balanceOf(memberToRemove);
+                    if (balance > 0) {
+                        uint256 tokenId = _findTokenIdByOwner(memberToRemove);
+                        familyNFT.burn(tokenId);
+                    }
+
+                    registry.removeFamilyMember(memberToRemove);
             }
         }
 
@@ -205,5 +211,16 @@ contract FamilyDAO {
         }
         revert("Invalid hex character");
     }
+
+    function _findTokenIdByOwner(address owner) internal view returns (uint256) {
+        uint256 totalMinted = familyNFT.nextTokenId();
+        for (uint256 tokenId = 0; tokenId < totalMinted; tokenId++) {
+            if (familyNFT.ownerOf(tokenId) == owner) {
+                return tokenId;
+            }
+        }
+        revert("Token not found for owner");
+    }
+
 }
 

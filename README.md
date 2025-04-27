@@ -76,6 +76,12 @@ cp out/FamilyDAO.sol/FamilyDAO.json family-dao-frontend/src/contracts/FamilyDAO.
 cp out/FamilyRegistry.sol/FamilyRegistry.json family-dao-frontend/src/contracts/FamilyRegistry.json
 ```
 
+### Run Frontend Environment 
+
+```shell
+$ npm run dev
+```
+
 ### Github Commit Commands 
 
 ```shell
