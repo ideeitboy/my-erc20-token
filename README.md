@@ -79,6 +79,7 @@ cp out/FamilyRegistry.sol/FamilyRegistry.json family-dao-frontend/src/contracts/
 ### Run Frontend Environment 
 
 ```shell
+$ cd family-dao-frontend 
 $ npm run dev
 ```
 
