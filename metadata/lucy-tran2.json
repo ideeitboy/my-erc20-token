@@ -1,0 +1,16 @@
+{
+    "name": "Lucy Tran",
+    "description": "Third-generation of the Wong family. Born in 1993.",
+    "image": "ipfs://bafybeiexbwzn27ouh5xgpe3bv6u3vqwsvovuwxl64y4ht62pxsfmaa4nne",
+    "attributes": [
+      {
+        "trait_type": "Generation",
+        "value": 2
+      },
+      {
+        "trait_type": "Role",
+        "value": "Wife"
+      }
+    ]
+  }
+  

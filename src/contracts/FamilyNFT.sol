@@ -62,5 +62,13 @@ contract FamilyNFT is ERC721URIStorage, Ownable(msg.sender) {
         nextTokenId++;
     }
 
+    function burn(uint256 tokenId) external {
+        require(msg.sender == familyDAO, "Only DAO can burn");
+        address owner = ownerOf(tokenId);
+        _burn(tokenId);
+        hasMinted[owner] = false;
+    }
+
+
 
 }

@@ -64,7 +64,7 @@ function App() {
       proposalDescription = `ADD_MEMBER:${newMember}:${parentAddress}:${role}:${finalMetadataURI}`
 
       console.log("📜 Prepared ADD_MEMBER Proposal String:", proposalDescription); // 🖨️ here
-      
+
     } else if (proposalType === "REMOVE_MEMBER") {
       if (!memberToRemove || !ethers.isAddress(memberToRemove)) {
         alert("Invalid address for removal.")
@@ -165,34 +165,43 @@ function App() {
       const nextTokenId = await nftContract.nextTokenId()
       const parsedNextTokenId = parseInt(nextTokenId.toString())
 
-      const nftList = []
+      const nftList = [];
       for (let tokenId = 0; tokenId < parsedNextTokenId; tokenId++) {
-        const rawURI = await nftContract.tokenURI(tokenId)
-        let formattedURI = rawURI.startsWith('ipfs://') ? `https://ipfs.io/ipfs/${rawURI.split('ipfs://')[1]}` : rawURI
-
-        let metadata = {}
         try {
-          const response = await fetch(formattedURI)
-          metadata = await response.json()
+          const owner = await nftContract.ownerOf(tokenId);
+          if (owner !== ethers.ZeroAddress) {
+            const rawURI = await nftContract.tokenURI(tokenId);
+            let formattedURI = rawURI.startsWith('ipfs://') ? `https://ipfs.io/ipfs/${rawURI.split('ipfs://')[1]}` : rawURI;
+
+            let metadata = {};
+            try {
+              const response = await fetch(formattedURI);
+              metadata = await response.json();
+            } catch (err) {
+              console.warn(`⚠️ Failed to fetch metadata for token ${tokenId}:`, err);
+              metadata = { name: "Unknown", description: "Error loading metadata", image: "" };
+            }
+
+            let finalImage = "";
+            if (metadata.image) {
+              finalImage = metadata.image.startsWith('ipfs://') ? `https://ipfs.io/ipfs/${metadata.image.split('ipfs://')[1]}` : metadata.image;
+            }
+
+            nftList.push({
+              tokenId,
+              tokenURI: formattedURI,
+              image: finalImage,
+              name: metadata.name || `Token #${tokenId}`,
+              description: metadata.description || "No description"
+            });
+          }
         } catch (err) {
-          console.warn(`⚠️ Failed to fetch metadata for token ${tokenId}:`, err)
-          metadata = { name: "Unknown", description: "Error loading metadata", image: "" }
+          // ownerOf failed ➔ token is burned ➔ skip
+          console.log(`Token ID ${tokenId} is burned.`);
         }
-
-        let finalImage = ""
-        if (metadata.image) {
-          finalImage = metadata.image.startsWith('ipfs://') ? `https://ipfs.io/ipfs/${metadata.image.split('ipfs://')[1]}` : metadata.image
-        }
-
-        nftList.push({
-          tokenId,
-          tokenURI: formattedURI,
-          image: finalImage,
-          name: metadata.name || `Token #${tokenId}`,
-          description: metadata.description || "No description"
-        })
       }
-      setMintedNFTs(nftList)
+      setMintedNFTs(nftList);
+
     } catch (err) {
       console.error("Failed to load minted NFTs:", err)
     }
