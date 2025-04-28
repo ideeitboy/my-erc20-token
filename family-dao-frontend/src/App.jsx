@@ -5,7 +5,6 @@ import './App.css'
 import FamilyDAO from './contracts/FamilyDAO.json'
 import FamilyNFT from './contracts/FamilyNFT.json'
 import FamilyRegistry from './contracts/FamilyRegistry.json'
-// import adminMint from "../../src/contracts/FamilyNFT.sol"
 
 import {
   FAMILY_NFT_ADDRESS,
@@ -109,10 +108,12 @@ function App() {
       const signer = await signerProvider.getSigner()
       const nftWithSigner = nftContract.connect(signer)
       const tx = await nftWithSigner.adminMint(adminAddress)
+      alert("🪙 Minting NFT...")
       await tx.wait()
       alert("✅ NFT successfully minted!")
       await loadMintedNFTs()
     } catch (err) {
+      alert(err)
       console.error("❌ Admin mint failed:", err)
       alert("❌ Admin mint failed.")
     }
@@ -156,6 +157,7 @@ function App() {
       await fetchProposal()
       await loadMintedNFTs()
     } catch (err) {
+      alert(err)
       console.error("❌ Execution failed:", err)
       alert("❌ Failed to execute proposal.")
     }
@@ -273,8 +275,8 @@ function App() {
 
       {account && (
         <div style={{ marginTop: "20px", display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <h2>👤 Admin Address</h2>
-          <input type="text" placeholder="Admin IPFS" value={adminAddress} onChange={(e) => setAdminAddress(e.target.value)} style={{ width: '500px' }} />
+          <h2>👤 Admin CID</h2>
+          <input type="text" placeholder="Admin CID" value={adminAddress} onChange={(e) => setAdminAddress(e.target.value)} style={{ width: '500px' }} />
           </div>
       )}
 

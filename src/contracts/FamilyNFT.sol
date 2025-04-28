@@ -50,10 +50,10 @@ contract FamilyNFT is ERC721URIStorage, Ownable(msg.sender) {
 
     
 
-    function adminMint(string memory cid) external {
+    function adminMint(string memory cid) external onlyOwner{
         require(!hasMinted[msg.sender], "Already minted");
         _safeMint(msg.sender, nextTokenId);
-        cid = "bafkreif4oe2fjraicflpxkjgi3j32gvxvzcq4qogxw6kuxrero3egrgmfi";
+        //cid = "bafkreif4oe2fjraicflpxkjgi3j32gvxvzcq4qogxw6kuxrero3egrgmfi";
     
         string memory ipfsURI = string.concat("ipfs://", cid);
 
